@@ -1,0 +1,6 @@
+builds/*
+Router-build/*
+Server-build/*
+Router/.env
+Server/CMakeLists.txt.user
+
