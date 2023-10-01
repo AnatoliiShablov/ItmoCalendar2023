@@ -5,13 +5,15 @@ from aiogram import Bot, Dispatcher
 
 from misc.config_reader import config
 
-from handlers import text_router
+from handlers import commands_router, text_router, unhandled_router
 
 
 async def main():
     bot = Bot(token=config.bot_token.get_secret_value(), parse_mode="MarkdownV2")
     dp = Dispatcher()
 
+    dp.include_router(unhandled_router.router)
+    dp.include_router(commands_router.router)
     dp.include_router(text_router.router)
 
     await dp.start_polling(bot)

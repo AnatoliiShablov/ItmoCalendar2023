@@ -21,9 +21,10 @@ remove_definitions(-DHAVE_LIBSYSTEMD)
 
 conan_cmake_configure(
     REQUIRES
-        fmt/6.1.2
+        fmt/8.1.1
         zlib/1.3
         libsystemd/253.6
+        libxcrypt/4.4.16
         grpc/1.54.3
     GENERATORS
         cmake_find_package
