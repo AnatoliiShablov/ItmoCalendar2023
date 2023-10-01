@@ -19,7 +19,7 @@ async def argument_text(message: Message):
         request.text    = message.text.strip()
 
         response = await stub.AddNextArgument(request)
-    await message.answer(md.quote(response.text))
+    await message.answer(md.quote(response.status.ok.text))
 
 if __name__ == "__main__":
     import os

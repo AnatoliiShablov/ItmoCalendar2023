@@ -48,7 +48,8 @@ public:
                 fmt::format("{}. {}\n"
                             "    {}\n"
                             "\n",
-                            event.first.id, event.second.description, event.first.tp));
+                            event.first, event.second.description,
+                            std::chrono::clock_cast<std::chrono::system_clock>(event.second.tp)));
         }
 
         return grpc::Status::OK;
@@ -86,7 +87,6 @@ public:
 
         response->mutable_status()->mutable_ok()->set_text("Введите дату");
 
-        currentUser.newTP = std::chrono::system_clock::time_point{};
         currentUser.state = UserInfo::State::AddingNewDate;
         return grpc::Status::OK;
     }
@@ -132,7 +132,8 @@ public:
         }
 
         for (auto eventIt{currentUser.events.begin()}; eventIt != currentUser.events.end(); ++eventIt) {
-            if (eventIt->first.id == request->id()) {
+            if (eventIt->first == request->id()) {
+                response->mutable_status()->mutable_ok()->set_text("Удаление произведено успешно");
                 currentUser.events.erase(eventIt);
                 return grpc::Status::OK;
             }
@@ -153,39 +154,65 @@ public:
     }
 
     grpc::Status AddNextArgument(grpc::ServerContext *context, const front_api::AddNextArgumentRequest *request,
-                                 front_api::AddNextArgumentResponse *response) {
+                                 front_api::AddNextArgumentResponse *response) override {
         auto &currentUser = usersEvents[request->user().id()];
 
         switch (currentUser.state) {
         case UserInfo::State::Empty:
             response->mutable_status()->mutable_ok()->set_text(
-                "/help   -- для вывода этого сообщения\n"
+                "/help -- для вывода этого сообщения\n"
                 "\n"
-                "/new    -- для создания новой записи\n"
-                "/remove -- для удаления записи\n"
+                "/showall --для вывода существующих событий"
+                "\n"
+                "/new -- для создания новой записи\n"
+                "/remove [id] -- для удаления записи\n"
                 "");
-            break;
+            return grpc::Status::OK;
         case UserInfo::State::AddingNewDate:
-            response->mutable_status()->mutable_ok()->set_text("Здесь будет парсинг текста. Пока что 01.10.2023");
-
+            response->mutable_status()->mutable_ok()->set_text(
+                "Здесь будет парсинг текста. Пока что 01.10.2023\n"
+                "Пожалуйста введите время");
+            currentUser.inprocessEvent.tp = std::chrono::utc_clock::from_sys(std::chrono::sys_days(
+                std::chrono::year_month_day{std::chrono::year{2023}, std::chrono::month{1}, std::chrono::day{10}}));
+            currentUser.state             = UserInfo::State::AddingNewTime;
             return grpc::Status::OK;
         case UserInfo::State::AddingNewTime:
             response->mutable_status()->mutable_ok()->set_text(
-                "Невозможно выполнить данную комманду сейчас.\n"
-                "Введите время");
+                "Здесь будет парсинг текста. Пока что 14:00\n"
+                "Пожалуйста введите описание");
+            currentUser.inprocessEvent.tp += std::chrono::hours(14);
+            currentUser.inprocessEvent.tp += std::chrono::minutes{0};
+            currentUser.inprocessEvent.tp -= std::chrono::hours{3};
+
+            currentUser.state = UserInfo::State::AddingNewDescription;
             return grpc::Status::OK;
         case UserInfo::State::AddingNewDescription:
             response->mutable_status()->mutable_ok()->set_text(
-                "Невозможно выполнить данную комманду сейчас.\n"
-                "Введите описание");
-            return grpc::Status::OK;
-        case UserInfo::State::AddingNewNotification:
-            response->mutable_status()->mutable_ok()->set_text(
-                "Невозможно выполнить данную комманду сейчас.\n"
                 "Если требуется уведомление, напишите количество минут, за которое его прислать\n"
                 "Если нет, напишите 'нет'");
+            currentUser.inprocessEvent.description = request->text();
+
+            currentUser.state = UserInfo::State::AddingNewNotification;
+            return grpc::Status::OK;
+        case UserInfo::State::AddingNewNotification:
+            std::int64_t value;
+            if (request->text() != "нет") {
+                if (auto res = std::from_chars(request->text().c_str(),
+                                               request->text().c_str() + request->text().size(), value);
+                    res.ec != std::errc{} || res.ptr != request->text().c_str() + request->text().size() || value < 0) {
+                    response->mutable_status()->mutable_ok()->set_text(
+                        "Не смог прочитать необходимое количество минут. Повторите пожалуйста");
+                    return grpc::Status::OK;
+                }
+
+                currentUser.inprocessEvent.notification = currentUser.inprocessEvent.tp - std::chrono::minutes{value};
+            }
+            response->mutable_status()->mutable_ok()->set_text("Новая запись добавлена");
+            currentUser.events.emplace(++currentUser.maxId, std::move(currentUser.inprocessEvent));
+            currentUser.state = UserInfo::State::Empty;
             return grpc::Status::OK;
         }
+        return grpc::Status{grpc::StatusCode::UNIMPLEMENTED, "Server version is out-of-date"};
     }
 
     grpc::Status Subscribe(grpc::ServerContext *context, const front_api::SubscribeRequest *request,
@@ -195,14 +222,10 @@ public:
 
 private:
     struct UserInfo {
-        struct Identifier {
-            std::chrono::system_clock::time_point tp;
-            std::uint64_t id;
-        };
-
         struct Event {
+            std::chrono::utc_clock::time_point tp;
             std::string description;
-            std::optional<std::chrono::seconds> beforeNotification;
+            std::optional<std::chrono::utc_clock::time_point> notification;
         };
 
         enum class State {
@@ -217,8 +240,9 @@ private:
 
         std::uint64_t maxId{0};
         State state{State::Empty};
-        std::chrono::system_clock::time_point newTP;
-        std::map<Identifier, Event> events;
+
+        Event inprocessEvent;
+        std::map<std::uint64_t, Event> events;
     };
 
     std::unordered_map<std::int64_t, UserInfo> usersEvents;
