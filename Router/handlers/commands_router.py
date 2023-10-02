@@ -8,6 +8,7 @@ import FrontAPI_pb2
 
 router = Router()
 
+
 @router.message(Command("new"))
 async def cmd_start(message: Message):
     async with grpc.aio.insecure_channel("localhost:50051") as channel:
@@ -20,12 +21,13 @@ async def cmd_start(message: Message):
         response = await stub.StartNew(request)
     await message.answer(md.quote(response.status.ok.text))
 
+
 @router.message(Command("remove"))
 async def cmd_remove(message: Message):
     left = message.text.removeprefix('/remove').strip()
     try:
         value = int(left)
-        if  str(value) != left:
+        if str(value) != left:
             raise ValueError("Not an int64")
     except ValueError:
         await message.answer("Переданный аргумент не является числом")
@@ -34,13 +36,37 @@ async def cmd_remove(message: Message):
     async with grpc.aio.insecure_channel("localhost:50051") as channel:
         stub = FrontAPI_pb2_grpc.CalendarStub(channel)
 
-        request = FrontAPI_pb2.StartRemoveRequest()
+        request = FrontAPI_pb2.RemoveRequest()
 
         request.user.id = message.from_user.id
-        request.id      = value
+        request.id = value
 
-        response = await stub.StartRemove(request)
+        response = await stub.Remove(request)
     await message.answer(md.quote(response.status.ok.text))
+
+
+@router.message(Command("settimezone"))
+async def cmd_remove(message: Message):
+    left = message.text.removeprefix('/settimezone').strip()
+    try:
+        value = int(left)
+        if str(value) != left:
+            raise ValueError("Not an int64")
+    except ValueError:
+        await message.answer("Переданный аргумент не является числом")
+        return
+
+    async with grpc.aio.insecure_channel("localhost:50051") as channel:
+        stub = FrontAPI_pb2_grpc.CalendarStub(channel)
+
+        request = FrontAPI_pb2.SetTimeZoneRequest()
+
+        request.user.id = message.from_user.id
+        request.utcOffset.value = value
+
+        response = await stub.SetTimeZone(request)
+    await message.answer(md.quote(response.status.ok.text))
+
 
 @router.message(Command("showall"))
 async def cmd_showall(message: Message):
@@ -53,6 +79,7 @@ async def cmd_showall(message: Message):
 
         response = await stub.ShowAll(request)
     await message.answer(md.quote(response.status.ok.text))
+
 
 if __name__ == "__main__":
     import os
