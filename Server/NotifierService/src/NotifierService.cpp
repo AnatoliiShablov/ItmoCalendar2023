@@ -1,6 +1,7 @@
 #include "service/NotifierService.hpp"
 
 #include "service/details/NotifierServiceImpl.hpp"
+#include "spdlog/spdlog.h"
 
 namespace shablov {
 
@@ -13,8 +14,7 @@ NotifierService::NotifierService(DBService& dbservice, std::uint16_t port)
             builder.RegisterService(&service);
             return builder.BuildAndStart();
         }()};
-        fmt::print("{} listening on 0.0.0.0:{}\n", typeid(details::NotifierServiceImpl).name(), port);
-        std::flush(std::cout);
+        spdlog::info("{} listening on 0.0.0.0:{}\n", typeid(details::NotifierServiceImpl).name(), port);
         server->Wait();
     }} {}
 }  // namespace shablov

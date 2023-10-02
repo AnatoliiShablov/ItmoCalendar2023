@@ -20,6 +20,7 @@ list(APPEND CMAKE_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR})
 conan_cmake_configure(
         REQUIRES
         fmt/10.1.1
+        spdlog/1.12.0
         GENERATORS
         cmake_find_package
 )
@@ -33,6 +34,7 @@ conan_cmake_install(PATH_OR_REFERENCE .
 )
 
 find_package(fmt REQUIRED)
+find_package(spdlog REQUIRED)
 
 add_subdirectory(ServerInnerAPI)
 add_subdirectory(DBService)
@@ -46,4 +48,4 @@ target_include_directories(utils_parse INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(utils::parse ALIAS utils_parse)
 
 add_executable(Server server.cpp)
-target_link_libraries(Server PRIVATE protocols::FrontAPI fmt::fmt utils::parse service::DB service::Calendar service::Notifier)
+target_link_libraries(Server PRIVATE protocols::FrontAPI fmt::fmt utils::parse service::DB service::Calendar service::Notifier spdlog::spdlog)

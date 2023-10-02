@@ -1,6 +1,7 @@
 #include "service/CalendarService.hpp"
 
 #include "service/details/CalendarServiceImpl.hpp"
+#include "spdlog/spdlog.h"
 
 namespace shablov {
 
@@ -13,8 +14,7 @@ CalendarService::CalendarService(DBService& dbservice, std::uint16_t port)
             builder.RegisterService(&service);
             return builder.BuildAndStart();
         }()};
-        fmt::print("{} listening on 0.0.0.0:{}\n", typeid(details::CalendarServiceImpl).name(), port);
-        std::flush(std::cout);
+        spdlog::info("{} listening on 0.0.0.0:{}\n", typeid(details::CalendarServiceImpl).name(), port);
         server->Wait();
     }} {}
 }  // namespace shablov

@@ -1,6 +1,9 @@
 #include "service/details/CalendarServiceImpl.hpp"
 
+#include <source_location>
+
 #include "sapi/ServerInnerApi.hpp"
+#include "spdlog/spdlog.h"
 #include "utils/ParseUtils.hpp"
 
 namespace shablov::details {
@@ -62,6 +65,8 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
         auto const &currentUser = dbservice.getUserInfo(request->user().id());
 
         if (currentUser.state != sapi::UserInfo::State::Empty) {
+            spdlog::get("calendar")
+                ->info("User with id {} tried to show events not from empty state", request->user().id());
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -83,13 +88,36 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
                     event.eventId, event.description,
                     std::chrono::utc_clock::time_point{event.timeFromZeroUTC + currentUser.timezoneOffset}));
             } catch (...) {
+                spdlog::get("calendar")
+                    ->error(
+                        "Error in {}\n"
+                        "Request:\n"
+                        "{}\n\n"
+                        "Unable to represent time: {}",
+                        std::source_location().function_name(), request->DebugString(),
+                        std::chrono::utc_clock::time_point{event.timeFromZeroUTC + currentUser.timezoneOffset}
+                            .time_since_epoch());
             }
         }
 
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
-        fmt::print("{}\n", exception.what());
-        std::flush(std::cout);
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Error message: {}",
+                std::source_location().function_name(), request->DebugString(), exception.what());
+        throw;
+    } catch (...) {
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Unknown error",
+                std::source_location().function_name(), request->DebugString());
         throw;
     }
 }
@@ -99,6 +127,8 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
         auto const &currentUser = dbservice.getUserInfo(request->user().id());
 
         if (currentUser.state != sapi::UserInfo::State::Empty) {
+            spdlog::get("calendar")
+                ->info("User with id {} tried to show events not from empty state", request->user().id());
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -108,8 +138,22 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
 
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
-        fmt::print("{}\n", exception.what());
-        std::flush(std::cout);
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Error message: {}",
+                std::source_location().function_name(), request->DebugString(), exception.what());
+        throw;
+    } catch (...) {
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Unknown error",
+                std::source_location().function_name(), request->DebugString());
         throw;
     }
 }
@@ -119,6 +163,8 @@ grpc::Status CalendarServiceImpl::Remove(grpc::ServerContext *context, const fro
         auto const &currentUser = dbservice.getUserInfo(request->user().id());
 
         if (currentUser.state != sapi::UserInfo::State::Empty) {
+            spdlog::get("calendar")
+                ->info("User with id {} tried to show events not from empty state", request->user().id());
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -130,8 +176,22 @@ grpc::Status CalendarServiceImpl::Remove(grpc::ServerContext *context, const fro
         response->mutable_status()->mutable_ok()->set_text("Данного события не существует. Удаление невозможно");
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
-        fmt::print("{}\n", exception.what());
-        std::flush(std::cout);
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Error message: {}",
+                std::source_location().function_name(), request->DebugString(), exception.what());
+        throw;
+    } catch (...) {
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Unknown error",
+                std::source_location().function_name(), request->DebugString());
         throw;
     }
 }
@@ -142,6 +202,8 @@ grpc::Status CalendarServiceImpl::SetTimeZone(grpc::ServerContext *context,
         auto const &currentUser = dbservice.getUserInfo(request->user().id());
 
         if (currentUser.state != sapi::UserInfo::State::Empty) {
+            spdlog::get("calendar")
+                ->info("User with id {} tried to show events not from empty state", request->user().id());
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -151,8 +213,22 @@ grpc::Status CalendarServiceImpl::SetTimeZone(grpc::ServerContext *context,
 
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
-        fmt::print("{}\n", exception.what());
-        std::flush(std::cout);
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Error message: {}",
+                std::source_location().function_name(), request->DebugString(), exception.what());
+        throw;
+    } catch (...) {
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Unknown error",
+                std::source_location().function_name(), request->DebugString());
         throw;
     }
 }
@@ -176,6 +252,13 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
 
                 return grpc::Status::OK;
             }
+
+            spdlog::get("calendar")
+                ->info(
+                    "User send wrong date:\n"
+                    "{}",
+                    request->DebugString());
+
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введена некорректная дата.\n"
                             "{}",
@@ -189,6 +272,13 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                 response->mutable_status()->mutable_ok()->set_text(fmt::format("{}", popupDescriptionHelp));
                 return grpc::Status::OK;
             }
+
+            spdlog::get("calendar")
+                ->info(
+                    "User send wrong time:\n"
+                    "{}",
+                    request->DebugString());
+
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введено некорректное время.\n"
                             "{}",
@@ -205,6 +295,13 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                 response->mutable_status()->mutable_ok()->set_text("Новая запись добавлена");
                 return grpc::Status::OK;
             }
+
+            spdlog::get("calendar")
+                ->info(
+                    "User send wrong notification period:\n"
+                    "{}",
+                    request->DebugString());
+
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введен некорректный период для уведомления.\n"
                             "{}",
@@ -213,8 +310,22 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
         }
         return grpc::Status{grpc::StatusCode::UNIMPLEMENTED, "Server version is out-of-date"};
     } catch (std::exception const &exception) {
-        fmt::print("{}\n", exception.what());
-        std::flush(std::cout);
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Error message: {}",
+                std::source_location().function_name(), request->DebugString(), exception.what());
+        throw;
+    } catch (...) {
+        spdlog::get("calendar")
+            ->critical(
+                "Error in {}\n"
+                "Request:\n"
+                "{}\n\n"
+                "Unknown error",
+                std::source_location().function_name(), request->DebugString());
         throw;
     }
 }

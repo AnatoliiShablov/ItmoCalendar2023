@@ -1,6 +1,7 @@
 #include "service/details/NotifierServiceImpl.hpp"
 
 #include "sapi/ServerInnerApi.hpp"
+#include "spdlog/spdlog.h"
 
 namespace shablov::details {
 
@@ -16,6 +17,8 @@ grpc::Status NotifierServiceImpl::Subscribe(::grpc::ServerContext *context,
 
         for (auto const &event : res) {
             auto offset = dbservice.getUserInfo(event.userId).timezoneOffset;
+
+            spdlog::get("notifier")->debug("Notifying user: userId: {}. eventId: {}", event.userId, event.eventId);
 
             front_api::SubscribeResponse response;
             response.mutable_user()->set_id(event.userId);
