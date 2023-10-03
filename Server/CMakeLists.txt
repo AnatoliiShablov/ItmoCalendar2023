@@ -56,3 +56,4 @@ target_link_libraries(Server PRIVATE
 )
 
 add_subdirectory(unittests)
+add_subdirectory(intertest)

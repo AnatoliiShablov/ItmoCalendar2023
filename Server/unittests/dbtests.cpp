@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include "gtest/gtest.h"
 #include "sapi/ServerInnerApi.hpp"
 #include "service/DBService.hpp"
@@ -40,6 +42,41 @@ TEST(OneRun, Event) {
     ASSERT_EQ(db.getAllByUserId(1).front().description, "123");
 
     ASSERT_TRUE(db.getAllByUserId(2).empty());
+}
+
+TEST(MultipleRun, Event) {
+    std::string filename = std::tmpnam(nullptr);
+    {
+        DBService db(filename);
+        ASSERT_TRUE(db.getAllByUserId(1).empty());
+        ASSERT_TRUE(db.getAllByUserId(2).empty());
+
+        db.setState(1, sapi::UserInfo::State::AddingNewDate);
+        db.setDateWorkingEvent(1, std::chrono::seconds{2000000});
+        db.setTimeWorkingEvent(1, std::chrono::seconds{1000000});
+        db.setDescriptionWorkingEvent(1, "123");
+        db.setNotificationWorkingEvent(1, std::nullopt);
+
+        ASSERT_EQ(db.getAllByUserId(1).size(), 1);
+        ASSERT_EQ(db.getAllByUserId(1).front().userId, 1);
+        ASSERT_EQ(db.getAllByUserId(1).front().timeFromZeroUTC, std::chrono::seconds{2000000 + 1000000});
+        ASSERT_EQ(db.getAllByUserId(1).front().description, "123");
+
+        ASSERT_TRUE(db.getAllByUserId(2).empty());
+    }
+
+    {
+        DBService db(filename);
+
+        ASSERT_EQ(db.getAllByUserId(1).size(), 1);
+        ASSERT_EQ(db.getAllByUserId(1).front().userId, 1);
+        ASSERT_EQ(db.getAllByUserId(1).front().timeFromZeroUTC, std::chrono::seconds{2000000 + 1000000});
+        ASSERT_EQ(db.getAllByUserId(1).front().description, "123");
+
+        ASSERT_TRUE(db.getAllByUserId(2).empty());
+    }
+
+    std::filesystem::remove_all(filename);
 }
 
 }  // namespace shablov

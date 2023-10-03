@@ -8,6 +8,8 @@ Server-build
 
 /builds/*
 
+/Server/*_log.txt
+
 /Router/log.txt
 /Router/FrontAPI_pb2*
 /Router/.env
