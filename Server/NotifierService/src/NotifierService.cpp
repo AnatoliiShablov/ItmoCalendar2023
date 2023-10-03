@@ -5,9 +5,9 @@
 
 namespace shablov {
 
-NotifierService::NotifierService(DBService& dbservice, std::uint16_t port)
-    : workingThread{[&dbservice, port]() {
-        details::NotifierServiceImpl service{dbservice};
+NotifierService::NotifierService(PrometheusService& prometheusservice, DBService& dbservice, std::uint16_t port)
+    : workingThread{[&prometheusservice, &dbservice, port]() {
+        details::NotifierServiceImpl service{prometheusservice, dbservice};
         auto server{[&service, port]() {
             grpc::ServerBuilder builder;
             builder.AddListeningPort(fmt::format("0.0.0.0:{}", port), grpc::InsecureServerCredentials());

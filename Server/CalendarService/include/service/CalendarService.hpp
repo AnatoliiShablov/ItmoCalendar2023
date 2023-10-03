@@ -4,12 +4,13 @@
 #include <thread>
 
 #include "service/DBService.hpp"
+#include "service/PrometheusService.hpp"
 
 namespace shablov {
 
 class CalendarService {
 public:
-    CalendarService(DBService& dbservice, std::uint16_t port);
+    CalendarService(PrometheusService& prometheusservice, DBService& dbservice, std::uint16_t port);
 
 private:
     std::jthread workingThread;

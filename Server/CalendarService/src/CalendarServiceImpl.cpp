@@ -67,6 +67,7 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
         if (currentUser.state != sapi::UserInfo::State::Empty) {
             spdlog::get("calendar")
                 ->info("User with id {} tried to show events not from empty state", request->user().id());
+            prometheusservice.add_showall(false);
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -74,6 +75,7 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
 
         if (events.empty()) {
             response->mutable_status()->mutable_ok()->set_text("Нет текущих событий");
+            prometheusservice.add_showall(true);
             return grpc::Status::OK;
         }
 
@@ -100,6 +102,7 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
             }
         }
 
+        prometheusservice.add_showall(true);
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
         spdlog::get("calendar")
@@ -109,6 +112,7 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
                 "{}\n\n"
                 "Error message: {}",
                 std::source_location().function_name(), request->DebugString(), exception.what());
+        prometheusservice.add_critical_error();
         throw;
     } catch (...) {
         spdlog::get("calendar")
@@ -118,6 +122,7 @@ grpc::Status CalendarServiceImpl::ShowAll(grpc::ServerContext *context, const fr
                 "{}\n\n"
                 "Unknown error",
                 std::source_location().function_name(), request->DebugString());
+        prometheusservice.add_critical_error();
         throw;
     }
 }
@@ -129,6 +134,7 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
         if (currentUser.state != sapi::UserInfo::State::Empty) {
             spdlog::get("calendar")
                 ->info("User with id {} tried to show events not from empty state", request->user().id());
+            prometheusservice.add_new(false);
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
         }
 
@@ -136,6 +142,7 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
 
         response->mutable_status()->mutable_ok()->set_text(fmt::format("{}", popupDateHelp));
 
+        prometheusservice.add_new(true);
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
         spdlog::get("calendar")
@@ -145,6 +152,7 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
                 "{}\n\n"
                 "Error message: {}",
                 std::source_location().function_name(), request->DebugString(), exception.what());
+        prometheusservice.add_critical_error();
         throw;
     } catch (...) {
         spdlog::get("calendar")
@@ -154,6 +162,7 @@ grpc::Status CalendarServiceImpl::StartNew(grpc::ServerContext *context, const f
                 "{}\n\n"
                 "Unknown error",
                 std::source_location().function_name(), request->DebugString());
+        prometheusservice.add_critical_error();
         throw;
     }
 }
@@ -165,15 +174,22 @@ grpc::Status CalendarServiceImpl::Remove(grpc::ServerContext *context, const fro
         if (currentUser.state != sapi::UserInfo::State::Empty) {
             spdlog::get("calendar")
                 ->info("User with id {} tried to show events not from empty state", request->user().id());
+            prometheusservice.add_remove(false);
             return nonEmptyErrorHandling(response->mutable_status(), currentUser.state);
+        }
+
+        if (request->id() == 0) {
+            prometheusservice.add_critical_error();
         }
 
         if (dbservice.removeEvent(request->user().id(), request->id())) {
             response->mutable_status()->mutable_ok()->set_text("Удаление произведено успешно");
+            prometheusservice.add_remove(false);
             return grpc::Status::OK;
         }
 
         response->mutable_status()->mutable_ok()->set_text("Данного события не существует. Удаление невозможно");
+        prometheusservice.add_remove(true);
         return grpc::Status::OK;
     } catch (std::exception const &exception) {
         spdlog::get("calendar")
@@ -183,6 +199,7 @@ grpc::Status CalendarServiceImpl::Remove(grpc::ServerContext *context, const fro
                 "{}\n\n"
                 "Error message: {}",
                 std::source_location().function_name(), request->DebugString(), exception.what());
+        prometheusservice.add_critical_error();
         throw;
     } catch (...) {
         spdlog::get("calendar")
@@ -192,6 +209,7 @@ grpc::Status CalendarServiceImpl::Remove(grpc::ServerContext *context, const fro
                 "{}\n\n"
                 "Unknown error",
                 std::source_location().function_name(), request->DebugString());
+        prometheusservice.add_critical_error();
         throw;
     }
 }
@@ -220,6 +238,7 @@ grpc::Status CalendarServiceImpl::SetTimeZone(grpc::ServerContext *context,
                 "{}\n\n"
                 "Error message: {}",
                 std::source_location().function_name(), request->DebugString(), exception.what());
+        prometheusservice.add_critical_error();
         throw;
     } catch (...) {
         spdlog::get("calendar")
@@ -229,6 +248,7 @@ grpc::Status CalendarServiceImpl::SetTimeZone(grpc::ServerContext *context,
                 "{}\n\n"
                 "Unknown error",
                 std::source_location().function_name(), request->DebugString());
+        prometheusservice.add_critical_error();
         throw;
     }
 }
@@ -258,7 +278,7 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                     "User send wrong date:\n"
                     "{}",
                     request->DebugString());
-
+            prometheusservice.add_error_date();
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введена некорректная дата.\n"
                             "{}",
@@ -278,7 +298,7 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                     "User send wrong time:\n"
                     "{}",
                     request->DebugString());
-
+            prometheusservice.add_error_time();
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введено некорректное время.\n"
                             "{}",
@@ -302,6 +322,7 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                     "{}",
                     request->DebugString());
 
+            prometheusservice.add_error_notification();
             response->mutable_status()->mutable_ok()->set_text(
                 fmt::format("Введен некорректный период для уведомления.\n"
                             "{}",
@@ -317,6 +338,7 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                 "{}\n\n"
                 "Error message: {}",
                 std::source_location().function_name(), request->DebugString(), exception.what());
+        prometheusservice.add_critical_error();
         throw;
     } catch (...) {
         spdlog::get("calendar")
@@ -326,10 +348,12 @@ grpc::Status CalendarServiceImpl::AddNextArgument(grpc::ServerContext *context,
                 "{}\n\n"
                 "Unknown error",
                 std::source_location().function_name(), request->DebugString());
+        prometheusservice.add_critical_error();
         throw;
     }
 }
 
-CalendarServiceImpl::CalendarServiceImpl(DBService &dbservice) : dbservice{dbservice} {}
+CalendarServiceImpl::CalendarServiceImpl(PrometheusService &prometheusservice, DBService &dbservice)
+    : prometheusservice{prometheusservice}, dbservice{dbservice} {}
 
 }  // namespace shablov::details

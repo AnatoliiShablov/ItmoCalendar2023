@@ -6,12 +6,13 @@
 #include "grpcpp/server_builder.h"
 #include "protocols/FrontAPI.grpc.pb.h"
 #include "service/DBService.hpp"
+#include "service/PrometheusService.hpp"
 
 namespace shablov::details {
 
 class CalendarServiceImpl final: public front_api::Calendar::Service {
 public:
-    CalendarServiceImpl(DBService &dbservice);
+    CalendarServiceImpl(PrometheusService &prometheusservice, DBService &dbservice);
 
     grpc::Status ShowAll(grpc::ServerContext *context, const front_api::ShowAllRequest *request,
                          front_api::ShowAllResponse *response) override;
@@ -29,6 +30,7 @@ public:
                                  front_api::AddNextArgumentResponse *response) override;
 
 private:
+    PrometheusService &prometheusservice;
     DBService &dbservice;
 };
 

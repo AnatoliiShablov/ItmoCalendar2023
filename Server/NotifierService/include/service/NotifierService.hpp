@@ -4,12 +4,13 @@
 #include <thread>
 
 #include "service/DBService.hpp"
+#include "service/PrometheusService.hpp"
 
 namespace shablov {
 
 class NotifierService {
 public:
-    NotifierService(DBService& dbservice, std::uint16_t port);
+    NotifierService(PrometheusService& prometheusservice, DBService& dbservice, std::uint16_t port);
 
 private:
     std::jthread workingThread;

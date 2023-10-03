@@ -5,9 +5,9 @@
 
 namespace shablov {
 
-CalendarService::CalendarService(DBService& dbservice, std::uint16_t port)
-    : workingThread{[&dbservice, port]() {
-        details::CalendarServiceImpl service{dbservice};
+CalendarService::CalendarService(PrometheusService& prometheusservice,DBService& dbservice, std::uint16_t port)
+    : workingThread{[&prometheusservice,&dbservice, port]() {
+        details::CalendarServiceImpl service{prometheusservice, dbservice};
         auto server{[&service, port]() {
             grpc::ServerBuilder builder;
             builder.AddListeningPort(fmt::format("0.0.0.0:{}", port), grpc::InsecureServerCredentials());

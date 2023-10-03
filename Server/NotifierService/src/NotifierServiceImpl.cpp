@@ -5,7 +5,8 @@
 
 namespace shablov::details {
 
-NotifierServiceImpl::NotifierServiceImpl(DBService &dbservice) : dbservice{dbservice} {}
+NotifierServiceImpl::NotifierServiceImpl(PrometheusService &prometheusservice, DBService &dbservice)
+    : prometheusservice{prometheusservice}, dbservice{dbservice} {}
 
 grpc::Status NotifierServiceImpl::Subscribe(::grpc::ServerContext *context,
                                             const ::front_api::SubscribeRequest *request,
@@ -18,6 +19,7 @@ grpc::Status NotifierServiceImpl::Subscribe(::grpc::ServerContext *context,
         for (auto const &event : res) {
             auto offset = dbservice.getUserInfo(event.userId).timezoneOffset;
 
+            prometheusservice.add_notification();
             spdlog::get("notifier")->debug("Notifying user: userId: {}. eventId: {}", event.userId, event.eventId);
 
             front_api::SubscribeResponse response;

@@ -1,5 +1,10 @@
 __pycache__
 .idea
+cmake-build-debug
+cmake-build-release
+CMakeLists.txt.user
+Router-build
+Server-build
 
 /builds/*
 
@@ -7,9 +12,7 @@ __pycache__
 /Router/FrontAPI_pb2*
 /Router/.env
 
-/Server/cmake-build-debug/*
-/Server/CMakeLists.txt.user
 
-/Router-build/*
-/Server-build/*
+
+
 
