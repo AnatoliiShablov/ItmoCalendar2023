@@ -54,3 +54,5 @@ target_link_libraries(Server PRIVATE
         protocols::FrontAPI
         service::Prometheus service::DB service::Calendar service::Notifier
 )
+
+add_subdirectory(unittests)

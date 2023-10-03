@@ -9,9 +9,8 @@
 
 constexpr std::optional<std::chrono::year_month_day> getDate(std::string_view line) noexcept {
     constexpr std::string_view datePattern = "dd.dd.dddd";
-    if (!std::equal(line.begin(), line.end(), datePattern.begin(), datePattern.end(), [](char c, char p) {
-            return (c == '.' && p == '.') || (std::isdigit(static_cast<unsigned char>(c)) && p == 'd');
-        })) {
+    if (!std::equal(line.begin(), line.end(), datePattern.begin(), datePattern.end(),
+                    [](char c, char p) { return (c == '.' && p == '.') || (('0' <= c && c <= '9') && p == 'd'); })) {
         return std::nullopt;
     }
 
@@ -27,11 +26,20 @@ constexpr std::optional<std::chrono::year_month_day> getDate(std::string_view li
                                                                    : std::nullopt;
 }
 
+static_assert(getDate("01.01.2020").value() ==
+              std::chrono::year_month_day{std::chrono::year{2020}, std::chrono::month{01}, std::chrono::day{01}});
+
+static_assert(!getDate("01.13.2020"));
+
+static_assert(!getDate("1.1.1"));
+
+static_assert(!getDate(""));
+static_assert(!getDate("Nothing!"));
+
 constexpr std::optional<std::chrono::minutes> getTime(std::string_view line) noexcept {
     constexpr std::string_view datePattern = "dd:dd";
-    if (!std::equal(line.begin(), line.end(), datePattern.begin(), datePattern.end(), [](char c, char p) {
-            return (c == ':' && p == ':') || (std::isdigit(static_cast<unsigned char>(c)) && p == 'd');
-        })) {
+    if (!std::equal(line.begin(), line.end(), datePattern.begin(), datePattern.end(),
+                    [](char c, char p) { return (c == ':' && p == ':') || (('0' <= c && c <= '9') && p == 'd'); })) {
         return std::nullopt;
     }
 
@@ -44,6 +52,17 @@ constexpr std::optional<std::chrono::minutes> getTime(std::string_view line) noe
 
     return (h.count() < 24 && m.count() < 60) ? std::optional<std::chrono::minutes>{h + m} : std::nullopt;
 }
+
+static_assert(getTime("11:00").value() == std::chrono::hours{11});
+static_assert(getTime("23:59").value() == std::chrono::hours{23} + std::chrono::minutes{59});
+static_assert(getTime("07:12").value() == std::chrono::hours{7} + std::chrono::minutes{12});
+
+static_assert(!getTime("1:1"));
+static_assert(!getTime("11.11"));
+static_assert(!getTime("24:00"));
+
+static_assert(!getDate(""));
+static_assert(!getDate("Nothing!"));
 
 constexpr std::optional<std::optional<std::uint32_t>> getOffset(std::string_view line) {
     if (line == "нет") {
@@ -60,5 +79,7 @@ constexpr std::optional<std::optional<std::uint32_t>> getOffset(std::string_view
 
     return value;
 }
+
+static_assert(!getOffset("нет").value());
 
 #endif  // ITMOCALENDAR2023_PARSEUTILS_HPP
